@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
 const StreetSchema = new mongoose.Schema({
     data: {
-        type: String,
+        type: Object,
         required: false
     },
     createdAt: { type: Date, default: Date.now },
