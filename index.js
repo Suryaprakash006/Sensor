@@ -13,14 +13,26 @@ mongoose.set('strictQuery', true);
 
 // Define a Comment model (assuming it's already defined)
 
-// Create a new comment
-app.post('/Sensor/add', async (req, res) => {
+// Create or update a comment by ID
+app.post('/Sensor/add/:commentId', async (req, res) => {
   const { data } = req.body;
+  const commentId = req.params.commentId;
 
   try {
-    const newComment = new Comment({ data });
-    await newComment.save();
-    res.send("Comment Posted");
+    // Check if a comment with the given ID exists
+    let existingComment = await Comment.findById(commentId);
+
+    if (existingComment) {
+      // If the comment with the given ID exists, update its data
+      existingComment.data = data;
+      await existingComment.save();
+      res.send("Comment Updated");
+    } else {
+      // If the comment with the given ID doesn't exist, create a new comment
+      const newComment = new Comment({ _id: commentId, data });
+      await newComment.save();
+      res.send("Comment Created");
+    }
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
