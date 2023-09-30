@@ -3,69 +3,45 @@ const mongoose = require('mongoose');
 const Comment = require('./models/comments');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const app = express();
+const WebSocket = require('ws'); // Import the WebSocket library
+const http = require('http'); // Import the HTTP module
 require("dotenv").config();
+
+const app = express();
 app.use(cors());
-mongoose.connect('mongodb+srv://rajessh781:R%40jesh2512@personal-blog.dtfxubi.mongodb.net/CodeBlog', { useNewUrlParser: true });
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(bodyParser.urlencoded({ limit: "50mb", extended: true, parameterLimit: 50000 }));
+mongoose.connect('mongodb+srv://rajessh781:R%40jesh2512@personal-blog.dtfxubi.mongodb.net/CodeBlog', { useNewUrlParser: true });
 mongoose.set('strictQuery', true);
 
-// Define a Comment model (assuming it's already defined)
+// ... (your existing routes)
 
-// Create or update a comment by ID
-app.post('/Sensor/add/:commentId', async (req, res) => {
-  const { data } = req.body;
-  const commentId = req.params.commentId;
+// Create an HTTP server that will be used for WebSocket
+const server = http.createServer(app);
 
-  try {
-    // Check if a comment with the given ID exists
-    let existingComment = await Comment.findById(commentId);
+// Create a WebSocket server by passing the HTTP server
+const wss = new WebSocket.Server({ server });
 
-    if (existingComment) {
-      // If the comment with the given ID exists, update its data
-      existingComment.data = data;
-      await existingComment.save();
-      res.send("Comment Updated");
-    } else {
-      // If the comment with the given ID doesn't exist, create a new comment
-      const newComment = new Comment({ _id: commentId, data });
-      await newComment.save();
-      res.send("Comment Created");
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
+// WebSocket connection handling
+wss.on('connection', (ws) => {
+  console.log('WebSocket client connected');
+
+  // Handle messages from WebSocket clients
+  ws.on('message', (message) => {
+    // Broadcast the received message to all WebSocket clients
+    wss.clients.forEach((client) => {
+      if (client !== ws && client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  });
+
+  // Handle WebSocket client disconnect
+  ws.on('close', () => {
+    console.log('WebSocket client disconnected');
+  });
 });
 
-// Get all comments
-app.get('/Sensor', async (req, res) => {
-  try {
-    const comments = await Comment.find({});
-    res.json(comments);
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Delete a comment by ID
-app.delete('/Sensor/delete/:commentId', async (req, res) => {
-  const commentId = req.params.commentId;
-
-  try {
-    // Find the comment by ID and remove it from the database
-    const deletedComment = await Comment.findByIdAndRemove(commentId);
-
-    if (!deletedComment) {
-      return res.status(404).json({ message: 'Comment not found' });
-    }
-
-    res.status(200).json({ message: 'Comment deleted successfully', deletedComment });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.listen(process.env.PORT || 3001, () => {
-  console.log("You're Connected");
+server.listen(process.env.PORT || 3001, () => {
+  console.log("Server is running");
 });
